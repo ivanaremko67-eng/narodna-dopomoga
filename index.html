@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Допомога ЗСУ — Збори на військові цілі 2025</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Supabase JS клієнт v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  /* Весь CSS залишається тим самим, що й раніше — копіюй з попередньої версії */
+  :root {
+    --bg: #e0e0d1;
+    --card: rgba(255, 255, 255, 0.95);
+    --primary: #2d3319;
+    --accent: #3d4624;
+    --text: #1a1a1a;
+    --gray: #444;
+    --shadow: 0 20px 40px rgba(45, 51, 25, 0.15);
+    --btn-bg: #228B22;
+    --btn-hover: #1e7b1e;
+  }
+  /* ... весь інший CSS без змін ... */
+</style>
+</head>
+<body>
+<!-- HTML структура без змін -->
+<div id="sidebar">
+  <h2>Допомога ЗСУ</h2>
+  <p>Збори на військові цілі та потреби</p>
+  <button onclick="openAdminModal()">Адмін-панель</button>
+</div>
+<div id="main">
+  <div class="header-title">
+    <h1>Допомога ЗСУ</h1>
+    <p>Збори на військові цілі та потреби</p>
+  </div>
+  <div id="posts-list"></div>
+</div>
+
+<div id="admin-modal" class="modal">
+  <!-- модалка без змін -->
+</div>
+
+<script>
+// Правильна ініціалізація Supabase
+const { createClient } = supabase;
+const supabase = createClient('https://epgodyfgugeidffmdpma.supabase.co', 'sb_publishable_HdWb0yCtBMOlH4WYozmpTg_a_yVfeUt');
+
+let isAdminLogged = false;
+const ADMIN_LOGIN = 'admin';
+const ADMIN_PASS = 'admin2025';
+
+const modal = document.getElementById('admin-modal');
+const postsList = document.getElementById('posts-list');
+
+// ... функції openAdminModal, closeAdminModal, adminLogin, adminLogout без змін ...
+
+async function createPost() {
+  if (!isAdminLogged) return;
+  const title = document.getElementById('post-title').value.trim();
+  const content = document.getElementById('post-content').value.trim();
+  const link = document.getElementById('post-link').value.trim();
+  if (!title || !content) return alert('Заповніть заголовок та зміст!');
+
+  const { error } = await supabase
+    .from('posts')
+    .insert({ title, content, link });
+
+  if (error) {
+    console.error('Помилка створення посту:', error);
+    alert('Помилка: ' + error.message);
+  } else {
+    alert('Пост створено!');
+    document.getElementById('post-title').value = '';
+    document.getElementById('post-content').value = '';
+    document.getElementById('post-link').value = '';
+  }
+}
+
+async function deletePost(postId) {
+  if (!isAdminLogged) return;
+  if (confirm('Ви впевнені, що хочете видалити цей пост?')) {
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId);
+
+    if (error) {
+      console.error('Помилка видалення:', error);
+      alert('Помилка видалення: ' + error.message);
+    }
+  }
+}
+
+// ... sharePost без змін ...
+
+async function loadPosts() {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Помилка завантаження постів:', error);
+    postsList.innerHTML = '<p style="text-align:center;color:red;">Помилка завантаження постів</p>';
+    return [];
+  }
+  return data || [];
+}
+
+async function renderPosts() {
+  const posts = await loadPosts();
+  // ... решта renderPosts без змін ...
+}
+
+// Реал-тайм підписка (правильний канал)
+supabase
+  .channel('posts-changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, payload => {
+    console.log('Зміна в базі:', payload);
+    renderPosts();
+  })
+  .subscribe((status, err) => {
+    if (err) console.error('Помилка підписки:', err);
+    console.log('Статус підписки:', status);
+  });
+
+// Початкове завантаження
+renderPosts();
+</script>
+</body>
+</html>
